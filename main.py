@@ -1,5 +1,6 @@
 from telebot import TeleBot
 from decouple import config
+import sqlite3
 
 TOKEN = config('TOKEN')
 bot = TeleBot(TOKEN)
