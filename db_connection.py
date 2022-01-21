@@ -8,7 +8,10 @@ def db_table_val(user_id: int,
     """ Функция. Вносит данные пользователя в базу данных. """
     conn = sqlite3.connect('tourobot.db', check_same_thread=False)
     cursor = conn.cursor()
-    cursor.execute('INSERT INTO users (user_id, user_name, '
-                   'user_surname, username) VALUES (?, ?, ?, ?)',
-                   (user_id, user_name, user_surname, username))
+    try:
+        cursor.execute('INSERT INTO users (user_id, user_name, '
+                       'user_surname, username) VALUES (?, ?, ?, ?)',
+                       (user_id, user_name, user_surname, username))
+    except sqlite3.Error:
+        pass
     conn.commit()
