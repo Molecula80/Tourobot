@@ -1,5 +1,6 @@
 from telebot import TeleBot
 from decouple import config
+from db_connection import db_table_val
 import sqlite3
 
 TOKEN = config('TOKEN')
@@ -8,12 +9,29 @@ bot = TeleBot(TOKEN)
 
 @bot.message_handler(commands=["start"])
 def start(message) -> None:
-    bot.send_message(message.chat.id, 'Приивет. Меня зовут Tourobot. '
-                                      'Бот для поиска отелей.')
+    """ Функция. Создает пользователя, если его нет в базе данных. """
+    us_id = message.from_user.id
+    us_name = message.from_user.first_name
+    us_surname = message.from_user.last_name
+    username = message.from_user.username
+    try:
+        db_table_val(user_id=us_id,
+                     user_name=us_name,
+                     user_surname=us_surname,
+                     username=username)
+        bot.send_message(message.chat.id,
+                         'Здравствуйте {}. Меня зовут Tourobot. '
+                         'Бот для поиска отелей. Ваше имя внесено '
+                         'в базу данных.'.format(us_name))
+    except sqlite3.Error:
+        bot.send_message(message.chat.id,
+                         'Здравствуйте {}. Ваше имя уже '
+                         'есть в базе данных.'.format(us_name))
 
 
 @bot.message_handler(content_types=['text'])
 def get_text_messages(message) -> None:
+    """ Функция. Реагирует на текстовые сообщения. """
     if message.text == "/hello-world":
         bot.send_message(message.from_user.id, "Добро пожаловать!")
     elif message.text == "Привет":
