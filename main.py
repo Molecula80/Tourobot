@@ -1,10 +1,20 @@
 from telebot import TeleBot
 from decouple import config
 from db_connection import db_table_val
-
+import requests
+import json
 
 TOKEN = config('TOKEN')
 bot = TeleBot(TOKEN)
+
+x_rapid_api_key = config('X-RapidAPI-Key')
+
+url = "https://hotels4.p.rapidapi.com/locations/v2/search"
+
+headers = {
+    'x-rapidapi-host': "hotels4.p.rapidapi.com",
+    'x-rapidapi-key': x_rapid_api_key
+    }
 
 
 @bot.message_handler(commands=["start"])
@@ -27,15 +37,16 @@ def start(message) -> None:
 @bot.message_handler(content_types=['text'])
 def get_text_messages(message) -> None:
     """ Функция. Реагирует на текстовые сообщения. """
-    if message.text == "/hello-world":
-        bot.send_message(message.from_user.id, "Добро пожаловать!")
-    elif message.text == "Привет":
-        bot.send_message(message.from_user.id,
-                         "Привет, чем я могу тебе помочь?")
+    querystring = {"query": "new york", "locale": "en_US", "currency": "USD"}
+    response = requests.request("GET", url, headers=headers,
+                                params=querystring)
+    data = json.loads(response.text)
+    if message.text == "/new-york":
+        answer = '\n'.join(entry["name"]
+                           for entry in data["suggestions"][1]["entities"])
+        bot.send_message(message.from_user.id, answer)
     else:
-        bot.send_message(message.from_user.id,
-                         "Я тебя не понимаю. Напиши 'Привет' "
-                         "или '/hello-world'.")
+        bot.send_message(message.from_user.id, "Я не понимаю.")
 
 
 bot.polling(none_stop=True, interval=0)

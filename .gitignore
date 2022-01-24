@@ -152,3 +152,4 @@ cython_debug/
 #.idea/
 /tb_env/
 /tourobot.db
+/.env.template
