@@ -9,7 +9,7 @@ bot = TeleBot(TOKEN)
 
 x_rapid_api_key = config('X-RapidAPI-Key')
 
-url = "https://hotels4.p.rapidapi.com/locations/v2/search"
+url = "https://hotels4.p.rapidapi.com/properties/list"
 
 headers = {
     'x-rapidapi-host': "hotels4.p.rapidapi.com",
@@ -37,13 +37,21 @@ def start(message) -> None:
 @bot.message_handler(content_types=['text'])
 def get_text_messages(message) -> None:
     """ Функция. Реагирует на текстовые сообщения. """
-    querystring = {"query": "new york", "locale": "en_US", "currency": "USD"}
+    querystring = {"destinationId": "1506246",
+                   "pageNumber": "1",
+                   "pageSize": "10",
+                   "checkIn": "2022-01-25",
+                   "checkOut": "2020-02-01",
+                   "adults1": "1",
+                   "sortOrder": "PRICE",
+                   "locale": "en_US",
+                   "currency": "USD"}
     response = requests.request("GET", url, headers=headers,
                                 params=querystring)
-    data = json.loads(response.text)
+    results = json.loads(response.text)
     if message.text == "/new-york":
-        answer = '\n'.join(entry["name"]
-                           for entry in data["suggestions"][1]["entities"])
+        answer = '\n'.join(hotel["name"] for hotel in results["data"]["body"][
+            "searchResults"]["results"])
         bot.send_message(message.from_user.id, answer)
     else:
         bot.send_message(message.from_user.id, "Я не понимаю.")
