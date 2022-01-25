@@ -67,7 +67,9 @@ def get_text_messages(message) -> None:
     if message.text == "/new-york":
         answer = '\n'.join(hotel["name"] for hotel in properties_r["data"][
             "body"]["searchResults"]["results"])
-        bot.send_message(message.from_user.id, answer)
+        bot.send_message(message.from_user.id,
+                         answer,
+                         disable_web_page_preview=True)
     else:
         bot.send_message(message.from_user.id, "Я не понимаю.")
 
