@@ -38,27 +38,20 @@ class Query:
             self.__bot.send_message(message.from_user.id,
                                     'Цифрами пожалуйста')
 
-    @classmethod
-    def json_deserialization(cls, url: str, headers: dict,
-                             querystring: dict) -> dict:
-        """ Функция. Ищет результаты по url и строке запроса. """
-        response = requests.request("GET", url, headers=headers,
-                                    params=querystring)
-        return json.loads(response.text)
-
-    def get_destination_id(self):
-        search_url = "https://hotels4.p.rapidapi.com/locations/v2/search"
-        search_querystring = {"query": self.__city,
-                              "locale": "ru_RU",
-                              "currency": "USD"}
-        search_r = self.json_deserialization(url=search_url,
-                                             headers=self.__headers,
-                                             querystring=search_querystring)
-        return search_r["suggestions"][0]["entities"][0]["destinationId"]
+    def output_hotels(self):
+        hotels = self.find_hotels()
+        if not hotels:
+            self.__bot.send_message(self.__message.from_user.id,
+                                    'По вашему запросу ничего не найдено.')
+            return
+        for hotel in hotels:
+            self.output_hotel(hotel)
 
     def find_hotels(self):
         properties_url = "https://hotels4.p.rapidapi.com/properties/list"
         destination_id = self.get_destination_id()
+        if not destination_id:
+            return None
         properties_querystring = {"destinationId": destination_id,
                                   "pageNumber": "1",
                                   "pageSize": self.__hotels_count,
@@ -72,11 +65,54 @@ class Query:
                                                  headers=self.__headers,
                                                  querystring=
                                                  properties_querystring)
-        return properties_r["data"]["body"]["searchResults"]["results"]
+        try:
+            return properties_r["data"]["body"]["searchResults"]["results"]
+        except KeyError:
+            return None
 
-    def output_hotels(self):
-        hotels = self.find_hotels()
-        for hotel in hotels:
-            self.__bot.send_message(self.__message.from_user.id,
-                                    hotel["name"],
-                                    disable_web_page_preview=True)
+    def get_destination_id(self):
+        search_url = "https://hotels4.p.rapidapi.com/locations/v2/search"
+        search_querystring = {"query": self.__city,
+                              "locale": "ru_RU",
+                              "currency": "USD"}
+        search_r = self.json_deserialization(url=search_url,
+                                             headers=self.__headers,
+                                             querystring=search_querystring)
+        try:
+            return search_r["suggestions"][0]["entities"][0]["destinationId"]
+        except LookupError:
+            return None
+
+    @classmethod
+    def json_deserialization(cls, url: str, headers: dict,
+                             querystring: dict) -> dict:
+        """ Функция. Ищет результаты по url и строке запроса. """
+        response = requests.request("GET", url, headers=headers,
+                                    params=querystring)
+        return json.loads(response.text)
+
+    def output_hotel(self, hotel):
+        name = self.get_param(hotel, "name")
+        address = self.get_param(hotel, "address", "streetAddress")
+        center_dist = self.get_param(hotel, "landmarks", 0, "distance")
+        price = self.get_param(hotel, "ratePlan", "price", "current")
+        hotel_info = '{name}\nАдрес: {address}\n' \
+                     'Расстояние от цетра города: {center_dist}\n' \
+                     'Цена: {price}'.format(name=name,
+                                            address=address,
+                                            center_dist=center_dist,
+                                            price=price)
+        self.__bot.send_message(self.__message.from_user.id,
+                                hotel_info,
+                                disable_web_page_preview=True)
+
+    @classmethod
+    def get_param(cls, hotel, *args):
+        param = hotel
+        for arg in args:
+            try:
+                param = param[arg]
+            except LookupError:
+                return 'Нет данных'
+        return param
+
