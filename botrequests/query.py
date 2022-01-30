@@ -11,6 +11,8 @@ class Query:
     }
     __city = ''
     __hotels_count = 0
+    __check_in = ''
+    __check_out = ''
 
     def __init__(self, bot, message, sort_order):
         self.__bot = bot
@@ -33,10 +35,25 @@ class Query:
     def input_hotels_count(self, message):
         try:
             self.__hotels_count = int(message.text)
-            self.output_hotels()
+            self.__bot.send_message(message.from_user.id,
+                                    'Введите начальную дату в '
+                                    'формате гг-мм-дд.')
+            self.__bot.register_next_step_handler(message,
+                                                  self.input_check_in)
         except ValueError:
             self.__bot.send_message(message.from_user.id,
-                                    'Цифрами пожалуйста')
+                                    'Количество должно быть в цифрах.')
+
+    def input_check_in(self, message):
+        self.__check_in = '20{}'.format(message.text)
+        self.__bot.send_message(message.from_user.id,
+                                'Введите конечную дату в формате гг-мм-дд.')
+        self.__bot.register_next_step_handler(message,
+                                              self.input_check_out)
+
+    def input_check_out(self, message):
+        self.__check_out = '20{}'.format(message.text)
+        self.output_hotels()
 
     def output_hotels(self):
         hotels = self.find_hotels()
@@ -55,8 +72,8 @@ class Query:
         properties_querystring = {"destinationId": destination_id,
                                   "pageNumber": "1",
                                   "pageSize": self.__hotels_count,
-                                  "checkIn": "2022-01-25",
-                                  "checkOut": "2020-02-01",
+                                  "checkIn": self.__check_in,
+                                  "checkOut": self.__check_out,
                                   "adults1": "1",
                                   "sortOrder": self.__sort_order,
                                   "locale": "ru_RU",
@@ -115,4 +132,3 @@ class Query:
             except LookupError:
                 return 'Нет данных'
         return param
-
