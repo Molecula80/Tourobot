@@ -1,6 +1,7 @@
 from decouple import config
 import requests
 import json
+from telebot import types
 
 
 class Query:
@@ -13,6 +14,7 @@ class Query:
     __hotels_count = 0
     __check_in = ''
     __check_out = ''
+    __photos_count = 0
 
     def __init__(self, bot, message, sort_order):
         self.__bot = bot
@@ -53,7 +55,33 @@ class Query:
 
     def input_check_out(self, message):
         self.__check_out = '20{}'.format(message.text)
-        self.output_hotels()
+        keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True,
+                                             resize_keyboard=True)
+        buttons = ['Да', 'Нет']
+        keyboard.add(*buttons)
+        answer = self.__bot.send_message(message.from_user.id,
+                                         text='Вывести фотографии.',
+                                         reply_markup=keyboard)
+        self.__bot.register_next_step_handler(answer, self.need_photos)
+
+    def need_photos(self, message):
+        if message.text == 'Да':
+            self.__bot.send_message(message.from_user.id,
+                                    text='Сколько фотографий.')
+            self.__bot.register_next_step_handler(message,
+                                                  self.input_photos_count)
+        elif message.text == 'Нет':
+            self.output_hotels()
+        else:
+            self.__bot.send_message(message.from_user.id, 'Я не понимаю.')
+
+    def input_photos_count(self, message):
+        try:
+            self.__photos_count = int(message.text)
+            self.output_hotels()
+        except ValueError:
+            self.__bot.send_message(message.from_user.id,
+                                    'Количество должно быть в цифрах.')
 
     def output_hotels(self):
         hotels = self.find_hotels()
@@ -65,38 +93,37 @@ class Query:
             self.output_hotel(hotel)
 
     def find_hotels(self):
-        properties_url = "https://hotels4.p.rapidapi.com/properties/list"
+        url = "https://hotels4.p.rapidapi.com/properties/list"
         destination_id = self.get_destination_id()
         if not destination_id:
             return None
-        properties_querystring = {"destinationId": destination_id,
-                                  "pageNumber": "1",
-                                  "pageSize": self.__hotels_count,
-                                  "checkIn": self.__check_in,
-                                  "checkOut": self.__check_out,
-                                  "adults1": "1",
-                                  "sortOrder": self.__sort_order,
-                                  "locale": "ru_RU",
-                                  "currency": "USD"}
-        properties_r = self.json_deserialization(url=properties_url,
-                                                 headers=self.__headers,
-                                                 querystring=
-                                                 properties_querystring)
+        querystring = {"destinationId": destination_id,
+                       "pageNumber": "1",
+                       "pageSize": self.__hotels_count,
+                       "checkIn": self.__check_in,
+                       "checkOut": self.__check_out,
+                       "adults1": "1",
+                       "sortOrder": self.__sort_order,
+                       "locale": "ru_RU",
+                       "currency": "USD"}
+        results = self.json_deserialization(url=url,
+                                            headers=self.__headers,
+                                            querystring=querystring)
         try:
-            return properties_r["data"]["body"]["searchResults"]["results"]
+            return results["data"]["body"]["searchResults"]["results"]
         except KeyError:
             return None
 
     def get_destination_id(self):
-        search_url = "https://hotels4.p.rapidapi.com/locations/v2/search"
-        search_querystring = {"query": self.__city,
-                              "locale": "ru_RU",
-                              "currency": "USD"}
-        search_r = self.json_deserialization(url=search_url,
-                                             headers=self.__headers,
-                                             querystring=search_querystring)
+        url = "https://hotels4.p.rapidapi.com/locations/v2/search"
+        querystring = {"query": self.__city,
+                       "locale": "ru_RU",
+                       "currency": "USD"}
+        results = self.json_deserialization(url=url,
+                                            headers=self.__headers,
+                                            querystring=querystring)
         try:
-            return search_r["suggestions"][0]["entities"][0]["destinationId"]
+            return results["suggestions"][0]["entities"][0]["destinationId"]
         except LookupError:
             return None
 
@@ -119,6 +146,10 @@ class Query:
                                             address=address,
                                             center_dist=center_dist,
                                             price=price)
+        if self.__photos_count > 0:
+            photos = self.get_photos(hotel)
+            hotel_info = '{info}\nФотографии:\n{photos}'.format(
+                info=hotel_info, photos=photos)
         self.__bot.send_message(self.__message.from_user.id,
                                 hotel_info,
                                 disable_web_page_preview=True)
@@ -132,3 +163,19 @@ class Query:
             except LookupError:
                 return 'Нет данных'
         return param
+
+    def get_photos(self, hotel):
+        url = "https://hotels4.p.rapidapi.com/properties/get-hotel-photos"
+        querystring = {"id": hotel["id"]}
+        results = self.json_deserialization(url=url,
+                                            headers=self.__headers,
+                                            querystring=querystring)
+        try:
+            photos = [photo["baseUrl"].format(size=
+                                              photo["sizes"][1]["suffix"])
+                      for photo in results["hotelImages"]]
+            return '\n'.join(photos[:self.__photos_count])
+        except KeyError:
+            return str()
+        except TypeError:
+            return str()
