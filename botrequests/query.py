@@ -147,7 +147,7 @@ class Query:
                                             center_dist=center_dist,
                                             price=price)
         if self.__photos_count > 0:
-            photos = self.get_photos(hotel)
+            photos = '\n'.join(list(self.get_photos(hotel)))
             hotel_info = '{info}\nФотографии:\n{photos}'.format(
                 info=hotel_info, photos=photos)
         self.__bot.send_message(self.__message.from_user.id,
@@ -171,11 +171,19 @@ class Query:
                                             headers=self.__headers,
                                             querystring=querystring)
         try:
-            photos = [photo["baseUrl"].format(size=
-                                              photo["sizes"][1]["suffix"])
-                      for photo in results["hotelImages"]]
-            return '\n'.join(photos[:self.__photos_count])
+            for item in results["hotelImages"][:self.__photos_count]:
+                photo = self.get_photo(item)
+                yield photo
         except KeyError:
             return str()
-        except TypeError:
-            return str()
+
+    @classmethod
+    def get_photo(cls, item):
+        try:
+            size = item["sizes"][1]["suffix"]
+            photo = item["baseUrl"].format(size=size)
+            return photo
+        except LookupError:
+            return
+        except NameError:
+            return
