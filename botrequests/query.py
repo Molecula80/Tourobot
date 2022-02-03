@@ -67,7 +67,7 @@ class Query:
     def need_photos(self, message):
         if message.text == 'Да':
             self.__bot.send_message(message.from_user.id,
-                                    text='Сколько фотографий.')
+                                    text='Сколько фотографий? (не больше 10)')
             self.__bot.register_next_step_handler(message,
                                                   self.input_photos_count)
         elif message.text == 'Нет':
@@ -77,7 +77,10 @@ class Query:
 
     def input_photos_count(self, message):
         try:
-            self.__photos_count = int(message.text)
+            if int(message.text) <= 10:
+                self.__photos_count = int(message.text)
+            else:
+                self.__photos_count = 10
             self.output_hotels()
         except ValueError:
             self.__bot.send_message(message.from_user.id,
@@ -146,13 +149,11 @@ class Query:
                                             address=address,
                                             center_dist=center_dist,
                                             price=price)
-        if self.__photos_count > 0:
-            photos = '\n'.join(list(self.get_photos(hotel)))
-            hotel_info = '{info}\nФотографии:\n{photos}'.format(
-                info=hotel_info, photos=photos)
         self.__bot.send_message(self.__message.from_user.id,
                                 hotel_info,
                                 disable_web_page_preview=True)
+        if self.__photos_count > 0:
+            self.get_photos(hotel)
 
     @classmethod
     def get_param(cls, hotel, *args):
@@ -172,17 +173,15 @@ class Query:
                                             querystring=querystring)
         try:
             for item in results["hotelImages"][:self.__photos_count]:
-                photo = self.get_photo(item)
-                yield photo
+                self.get_photo(item)
         except KeyError:
-            return str()
+            return
 
-    @classmethod
-    def get_photo(cls, item):
+    def get_photo(self, item):
         try:
             size = item["sizes"][1]["suffix"]
             photo = item["baseUrl"].format(size=size)
-            return photo
+            self.__bot.send_photo(self.__message.from_user.id, photo)
         except LookupError:
             return
         except NameError:
