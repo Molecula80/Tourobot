@@ -2,7 +2,7 @@ from decouple import config
 import requests
 import json
 from telebot import types
-from typing import List
+from typing import List, Any
 
 
 class Query:
@@ -226,12 +226,14 @@ class Query:
         :return:
         """
         name = self.get_param(hotel, "name")
+        urls = self.get_urls(hotel)
         address = self.get_param(hotel, "address", "streetAddress")
         center_dist = self.get_param(hotel, "landmarks", 0, "distance")
         price = self.get_param(hotel, "ratePlan", "price", "current")
-        hotel_info = '{name}\nАдрес: {address}\n' \
+        hotel_info = '{name}\nСсылки:\n{urls}\nАдрес: {address}\n' \
                      'Расстояние от цетра города: {center_dist}\n' \
                      'Цена: {price}'.format(name=name,
+                                            urls=urls,
                                             address=address,
                                             center_dist=center_dist,
                                             price=price)
@@ -243,14 +245,14 @@ class Query:
             self.get_photos(hotel)
 
     @classmethod
-    def get_param(cls, hotel: dict, *args) -> str:
+    def get_param(cls, hotel: dict, *args) -> Any:
         """
         Статический метод. Проверяет словарь содержащий отель на наличие
         ключей и индексов, переданных в метод.
 
         :param hotel: словарь содержащий данные об отеле.
         :param args:
-        :rtype: str
+        :rtype: Any
         """
         param = hotel
         for arg in args:
@@ -260,6 +262,22 @@ class Query:
             except BaseException:
                 return 'Нет данных'
         return param
+
+    def get_urls(self, hotel: dict) -> str:
+        """
+        Метод. Возвращает ссылки на страницу отеля, если они есть.
+        В противном случае возращает 'Отсутствуют'.
+
+        :param hotel: словарь содержащий данные об отеле.
+        :rtype: str
+        """
+        urls_dict: dict = self.get_param(hotel, "urls")
+        if not urls_dict:
+            return 'Отсутствуют'
+        try:
+            return '\n'.join(urls_dict.values())
+        except BaseException:
+            return 'Отсутствуют'
 
     def get_photos(self, hotel: dict) -> None:
         """
