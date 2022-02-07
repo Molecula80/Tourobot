@@ -23,7 +23,7 @@ def start(message) -> None:
                  username=username)
 
 
-@bot.message_handler(content_types=['text', 'photo'])
+@bot.message_handler(content_types=['text'])
 def get_text_messages(message) -> None:
     """ Функция. Реагирует на текстовые сообщения. """
     if message.text == "/lowprice":

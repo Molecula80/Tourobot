@@ -3,6 +3,7 @@ import requests
 import json
 from telebot import types
 from typing import List, Any
+from telebot.types import InputMediaPhoto
 
 
 class Query:
@@ -230,7 +231,7 @@ class Query:
         address = self.get_param(hotel, "address", "streetAddress")
         center_dist = self.get_param(hotel, "landmarks", 0, "distance")
         price = self.get_param(hotel, "ratePlan", "price", "current")
-        hotel_info = '{name}\nСсылки:\n{urls}\nАдрес: {address}\n' \
+        hotel_info = '{name}\nСсылки: {urls}\nАдрес: {address}\n' \
                      'Расстояние от цетра города: {center_dist}\n' \
                      'Цена: {price}'.format(name=name,
                                             urls=urls,
@@ -260,7 +261,7 @@ class Query:
                 param = param[arg]
             # except LookupError:
             except BaseException:
-                return 'Нет данных'
+                return 'нет данных'
         return param
 
     def get_urls(self, hotel: dict) -> str:
@@ -273,11 +274,12 @@ class Query:
         """
         urls_dict: dict = self.get_param(hotel, "urls")
         if not urls_dict:
-            return 'Отсутствуют'
+            return 'отсутствуют'
         try:
-            return '\n'.join(urls_dict.values())
+            urls = '\n'.join(urls_dict.values())
+            return '\n{}'.format(urls)
         except BaseException:
-            return 'Отсутствуют'
+            return 'отсутствуют'
 
     def get_photos(self, hotel: dict) -> None:
         """
@@ -292,25 +294,25 @@ class Query:
                                             headers=self.__headers,
                                             querystring=querystring)
         try:
-            for item in results["hotelImages"][:self.__photos_count]:
-                self.output_photo(item)
+            images: List[dict] = results["hotelImages"][:self.__photos_count]
+            self.send_photos(images)
         # except KeyError:
         except BaseException:
             return
 
-    def output_photo(self, item: dict) -> None:
+    def send_photos(self, images: List[dict]) -> None:
         """
-        Шлет пользователю фотографию, если последняя была найдена.
+        Метод для отправки фотографий пользователю.
 
-        :param item: сдоварь, содержащий данные о фотографии.
+        :param images: список, содержащий фотографии.
         :return:
         """
-        try:
-            size = item["sizes"][1]["suffix"]
-            photo = item["baseUrl"].format(size=size)
-            self.__bot.send_photo(self.__message.from_user.id, photo)
-        # except LookupError:
-        #     return
-        # except NameError:
-        except BaseException:
-            return
+        photos: list = list()
+        for item in images:
+            try:
+                size = item["sizes"][0]["suffix"]
+                photo = item["baseUrl"].format(size=size)
+                photos.append(InputMediaPhoto(photo))
+            except BaseException:
+                pass
+        self.__bot.send_media_group(self.__message.from_user.id, photos)
