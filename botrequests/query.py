@@ -4,6 +4,7 @@ import json
 from telebot import types
 from typing import List
 from telebot.types import InputMediaPhoto
+from telegram_bot_calendar import DetailedTelegramCalendar
 
 
 class Query:
@@ -62,46 +63,67 @@ class Query:
         :param message: сообщение
         :return:
         """
+        @self.__bot.callback_query_handler(
+            func=DetailedTelegramCalendar.func(calendar_id=1))
+        def input_check_in(call) -> None:
+            """
+            Вложенная функция для выбора начальной даты.
+
+            :param call: вызов функции.
+            :return:
+            """
+            result, key, step = \
+                DetailedTelegramCalendar(calendar_id=1).process(call.data)
+            if not result and key:
+                self.__bot.edit_message_text('Выберите начальную дату.',
+                                             call.message.chat.id,
+                                             call.message.message_id,
+                                             reply_markup=key)
+            elif result:
+                self.__check_in = result
+                check_out_cal = \
+                    DetailedTelegramCalendar(calendar_id=2).build()[0]
+                self.__bot.send_message(message.chat.id,
+                                        'Выберите конечную дату.',
+                                        reply_markup=check_out_cal)
+
+        @self.__bot.callback_query_handler(
+            func=DetailedTelegramCalendar.func(calendar_id=2))
+        def input_check_out(call) -> None:
+            """
+            Вложенная функция для выбора конечной даты.
+
+            :param call: вызов функции.
+            :return:
+            """
+            result, key, step = \
+                DetailedTelegramCalendar(calendar_id=2).process(call.data)
+            if not result and key:
+                self.__bot.edit_message_text('Выберите конечную дату.',
+                                             call.message.chat.id,
+                                             call.message.message_id,
+                                             reply_markup=key)
+            elif result:
+                self.__check_out = result
+                keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True,
+                                                     resize_keyboard=True)
+                buttons = ['Да', 'Нет']
+                keyboard.add(*buttons)
+                answer = self.__bot.send_message(message.from_user.id,
+                                                 text='Вывести фотографии.',
+                                                 reply_markup=keyboard)
+                self.__bot.register_next_step_handler(answer,
+                                                      self.need_photos)
+
         try:
             self.__hotels_count = int(message.text)
-            self.__bot.send_message(message.from_user.id,
-                                    'Введите начальную дату в '
-                                    'формате гг-мм-дд.')
-            self.__bot.register_next_step_handler(message,
-                                                  self.input_check_in)
+            check_in_cal = DetailedTelegramCalendar(calendar_id=1).build()[0]
+            self.__bot.send_message(message.chat.id,
+                                    'Выберите начальную дату.',
+                                    reply_markup=check_in_cal)
         except ValueError:
             self.__bot.send_message(message.from_user.id,
                                     'Количество должно быть в цифрах.')
-
-    def input_check_in(self, message) -> None:
-        """
-        Метод для ввода даты въезда
-
-        :param message: сообщение
-        :return:
-        """
-        self.__check_in = '20{}'.format(message.text)
-        self.__bot.send_message(message.from_user.id,
-                                'Введите конечную дату в формате гг-мм-дд.')
-        self.__bot.register_next_step_handler(message,
-                                              self.input_check_out)
-
-    def input_check_out(self, message) -> None:
-        """
-        Метод для ввода даты выезда
-
-        :param message: сообщение
-        :return:
-        """
-        self.__check_out = '20{}'.format(message.text)
-        keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True,
-                                             resize_keyboard=True)
-        buttons = ['Да', 'Нет']
-        keyboard.add(*buttons)
-        answer = self.__bot.send_message(message.from_user.id,
-                                         text='Вывести фотографии.',
-                                         reply_markup=keyboard)
-        self.__bot.register_next_step_handler(answer, self.need_photos)
 
     def need_photos(self, message) -> None:
         """
