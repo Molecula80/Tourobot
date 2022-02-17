@@ -2,6 +2,7 @@ from telebot import TeleBot
 from decouple import config
 from db_connection import db_table_val
 from botrequests.query import Query
+from botrequests.bestdeal import BestDeal
 
 TOKEN = config('TOKEN')
 bot = TeleBot(TOKEN)
@@ -30,6 +31,8 @@ def get_text_messages(message) -> None:
         Query(bot=bot, message=message, sort_order='PRICE')
     elif message.text == "/highprice":
         Query(bot=bot, message=message, sort_order='PRICE_HIGHEST_FIRST')
+    elif message.text == "/bestdeal":
+        BestDeal(bot=bot, message=message)
     else:
         bot.send_message(message.from_user.id, "Я не понимаю.")
 
