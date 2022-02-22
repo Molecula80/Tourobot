@@ -31,8 +31,6 @@ class Query:
         'x-rapidapi-host': "hotels4.p.rapidapi.com",
         'x-rapidapi-key': __x_rapid_api_key
     }
-    __ci_cal_id = 1
-    __co_cal_id = 2
 
     def __init__(self, bot, message, sort_order: str) -> None:
         self.__bot = bot
@@ -68,7 +66,7 @@ class Query:
         :return:
         """
         @self.__bot.callback_query_handler(
-            func=DetailedTelegramCalendar.func(calendar_id=self.__ci_cal_id))
+            func=DetailedTelegramCalendar.func(calendar_id=1))
         def input_check_in(call) -> None:
             """
             Вложенная функция для выбора начальной даты.
@@ -77,8 +75,7 @@ class Query:
             :return:
             """
             result, key, step = \
-                DetailedTelegramCalendar(
-                    calendar_id=self.__ci_cal_id).process(call.data)
+                DetailedTelegramCalendar(calendar_id=1).process(call.data)
             if not result and key:
                 self.__bot.edit_message_text('Выберите начальную дату.',
                                              call.message.chat.id,
@@ -87,14 +84,13 @@ class Query:
             elif result:
                 self.__check_in = result
                 check_out_cal = \
-                    DetailedTelegramCalendar(calendar_id=
-                                             self.__co_cal_id).build()[0]
+                    DetailedTelegramCalendar(calendar_id=2).build()[0]
                 self.__bot.send_message(message.chat.id,
                                         'Выберите конечную дату.',
                                         reply_markup=check_out_cal)
 
         @self.__bot.callback_query_handler(
-            func=DetailedTelegramCalendar.func(calendar_id=self.__co_cal_id))
+            func=DetailedTelegramCalendar.func(calendar_id=2))
         def input_check_out(call) -> None:
             """
             Вложенная функция для выбора конечной даты.
@@ -103,8 +99,7 @@ class Query:
             :return:
             """
             result, key, step = \
-                DetailedTelegramCalendar(calendar_id=
-                                         self.__co_cal_id).process(call.data)
+                DetailedTelegramCalendar(calendar_id=2).process(call.data)
             if not result and key:
                 self.__bot.edit_message_text('Выберите конечную дату.',
                                              call.message.chat.id,
@@ -112,8 +107,6 @@ class Query:
                                              reply_markup=key)
             elif result:
                 self.__check_out = result
-                Query.__ci_cal_id += 2
-                Query.__co_cal_id += 2
                 keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True,
                                                      resize_keyboard=True)
                 buttons = ['Да', 'Нет']
@@ -127,7 +120,7 @@ class Query:
         try:
             self.__hotels_count = int(message.text)
             check_in_cal = DetailedTelegramCalendar(
-                calendar_id=self.__ci_cal_id).build()[0]
+                calendar_id=1).build()[0]
             self.__bot.send_message(message.chat.id,
                                     'Выберите начальную дату.',
                                     reply_markup=check_in_cal)
