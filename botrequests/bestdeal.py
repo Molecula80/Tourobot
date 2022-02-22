@@ -57,7 +57,7 @@ class BestDeal(Query):
         price_max = int(self.__bd_params[1])
         querystring: dict = {"destinationId": destination_id,
                              "pageNumber": "1",
-                             "pageSize": self._hotels_count,
+                             "pageSize": "25",
                              "checkIn": self._check_in,
                              "checkOut": self._check_out,
                              "adults1": "1",
@@ -72,15 +72,22 @@ class BestDeal(Query):
                                             querystring=querystring)
         try:
             hotels = results["data"]["body"]["searchResults"]["results"]
-            return results["data"]["body"]["searchResults"]["results"]
         except BaseException:
             return list()
+        req_hotels = [hotel for hotel in hotels
+                      if self.in_range(hotel)][:self._hotels_count]
+        return req_hotels
 
-    def distance_filter(self, hotels):
+    def in_range(self, hotel):
         dist_min = self.__bd_params[2]
         dist_max = self.__bd_params[3]
-        req_hotels = list()
-        for hotel in hotels:
-            distance = self.get_param(hotel, "landmarks", 0, "distance")
+        distance_str = self.get_param(hotel, "landmarks", 0, "distance")
+        try:
+            distance = float(distance_str.split()[0])
+        except ValueError:
+            return False
+        if dist_min <= distance <= dist_max:
+            return True
+
 
 

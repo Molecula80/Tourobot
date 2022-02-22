@@ -257,7 +257,11 @@ class Query:
         """
         name = self.get_param(hotel, "name")
         hotel_id = self.get_param(hotel, "id")
-        url = 'https://ru.hotels.com/ho{hotel_id}'.format(hotel_id=hotel_id)
+        if hotel_id != 'нет данных':
+            url = 'https://ru.hotels.com/ho{hotel_id}'.format(
+                hotel_id=hotel_id)
+        else:
+            url = 'отсутствует'
         address = self.get_param(hotel, "address", "streetAddress")
         center_dist = self.get_param(hotel, "landmarks", 0, "distance")
         price = self.get_param(hotel, "ratePlan", "price", "current")
