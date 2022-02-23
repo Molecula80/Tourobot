@@ -5,6 +5,9 @@ from telebot import types
 from typing import List
 from telebot.types import InputMediaPhoto
 from telegram_bot_calendar import DetailedTelegramCalendar
+import sqlite3
+from datetime import datetime
+from db_connection import db_commands_val, db_hotels_val
 
 
 class Query:
@@ -39,8 +42,22 @@ class Query:
         self.__bot = bot
         self.__message = message
         self.__sort_order = sort_order
+        self.__command_id = self.get_command_id()
         self.__bot.send_message(message.from_user.id, 'Введите город.')
         self.__bot.register_next_step_handler(message, self.input_city)
+
+    def get_command_id(self):
+        user_id = self.__message.from_user.id
+        db_commands_val(user_id=user_id,
+                        command_name=self.__message.text,
+                        time=datetime.now())
+        conn = sqlite3.connect('tourobot.db', check_same_thread=False)
+        cursor = conn.cursor()
+        conn.commit()
+        command_ids = cursor.execute("SELECT id FROM commands WHERE "
+                                     "user_id = {}".format(user_id))
+        command_id = list(command_ids)[-1][0]
+        return command_id
 
     def input_city(self, message) -> None:
         """
@@ -264,6 +281,7 @@ class Query:
         self.__bot.send_message(self.__message.from_user.id,
                                 hotel_info,
                                 disable_web_page_preview=True)
+        db_hotels_val(command_id=self.__command_id, hotel_name=name)
         # Ищем фотографии
         if self.__photos_count > 0:
             self.get_photos(hotel)
