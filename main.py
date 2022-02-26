@@ -2,6 +2,7 @@ from telebot import TeleBot
 from decouple import config
 from db_connection import db_table_val
 from botrequests.query import Query
+from logger import init_logger
 
 TOKEN = config('TOKEN')
 bot = TeleBot(TOKEN)
@@ -34,4 +35,6 @@ def get_text_messages(message) -> None:
         bot.send_message(message.from_user.id, "Я не понимаю.")
 
 
-bot.polling(none_stop=True, interval=0)
+if __name__ == '__main__':
+    init_logger()
+    bot.polling(none_stop=True, interval=0)

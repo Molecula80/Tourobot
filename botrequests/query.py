@@ -5,6 +5,7 @@ from telebot import types
 from typing import List
 from telebot.types import InputMediaPhoto
 from telegram_bot_calendar import DetailedTelegramCalendar
+import logging
 
 
 class Query:
@@ -41,8 +42,22 @@ class Query:
         self.__check_in = ''
         self.__check_out = ''
         self.__photos_count = 0
+        self.__logger = logging.getLogger('tourobot')
+        self.logger_debug()
         self.__bot.send_message(message.from_user.id, 'Введите город.')
         self.__bot.register_next_step_handler(message, self.input_city)
+
+    def logger_debug(self):
+        """ Метод для вывода логов. """
+        self.__logger.debug('Сортировка: {s_order} | Город: {city} | '
+                            'Отели: {h_count} | Время: {check_in} - '
+                            '{check_out} | Фотографии: {p_count}'.
+                            format(s_order=self.__sort_order,
+                                   city=self.__city,
+                                   h_count=self.__hotels_count,
+                                   check_in=self.__check_in,
+                                   check_out=self.__check_out,
+                                   p_count=self.__photos_count))
 
     def input_city(self, message) -> None:
         """
@@ -52,6 +67,7 @@ class Query:
         :return:
         """
         self.__city = message.text
+        self.logger_debug()
         self.__bot.send_message(message.from_user.id,
                                 'Сколько отелей нужно отобразить в '
                                 'сообщении? (не больше 25)')
@@ -83,6 +99,7 @@ class Query:
                                              reply_markup=key)
             elif result:
                 self.__check_in = result
+                self.logger_debug()
                 check_out_cal = \
                     DetailedTelegramCalendar(calendar_id=2).build()[0]
                 self.__bot.send_message(message.chat.id,
@@ -107,6 +124,7 @@ class Query:
                                              reply_markup=key)
             elif result:
                 self.__check_out = result
+                self.logger_debug()
                 keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True,
                                                      resize_keyboard=True)
                 buttons = ['Да', 'Нет']
@@ -119,6 +137,7 @@ class Query:
 
         try:
             self.__hotels_count = int(message.text)
+            self.logger_debug()
             check_in_cal = DetailedTelegramCalendar(
                 calendar_id=1).build()[0]
             self.__bot.send_message(message.chat.id,
@@ -157,6 +176,7 @@ class Query:
                 self.__photos_count = int(message.text)
             else:
                 self.__photos_count = 10
+            self.logger_debug()
             self.output_hotels()
         except ValueError:
             self.__bot.send_message(message.from_user.id,
@@ -197,13 +217,12 @@ class Query:
                              "sortOrder": self.__sort_order,
                              "locale": "ru_RU",
                              "currency": "USD"}
+        self.__logger.debug('Hottels_qs: {}'.format(querystring))
         results = self.json_deserialization(url=url,
                                             headers=self.__headers,
                                             querystring=querystring)
         try:
             return results["data"]["body"]["searchResults"]["results"]
-        # except KeyError:
-        #     return list()
         except BaseException:
             return list()
 
@@ -217,13 +236,12 @@ class Query:
         querystring: dict = {"query": self.__city,
                              "locale": "ru_RU",
                              "currency": "USD"}
+        self.__logger.debug('City_qs: {}'.format(querystring))
         results = self.json_deserialization(url=url,
                                             headers=self.__headers,
                                             querystring=querystring)
         try:
             return results["suggestions"][0]["entities"][0]["destinationId"]
-        # except LookupError:
-        #     return str()
         except BaseException:
             return str()
 
@@ -285,7 +303,6 @@ class Query:
         for arg in args:
             try:
                 param = param[arg]
-            # except LookupError:
             except BaseException:
                 return 'нет данных'
         return param
@@ -305,7 +322,6 @@ class Query:
         try:
             images: List[dict] = results["hotelImages"][:self.__photos_count]
             self.send_photos(images)
-        # except KeyError:
         except BaseException:
             return
 

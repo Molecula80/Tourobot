@@ -14,6 +14,7 @@ class BestDeal(Query):
         :return:
         """
         self.__city = message.text
+        self.logger_debug()
         self.__bot.send_message(message.from_user.id,
                                 'Сколько отелей нужно отобразить в '
                                 'сообщении? (не больше 25)')
