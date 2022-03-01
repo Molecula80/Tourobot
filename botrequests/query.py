@@ -42,22 +42,9 @@ class Query:
         self.__bot = bot
         self.__message = message
         self.__sort_order = sort_order
-        self.__command_id = self.get_command_id()
+        self.__command_id = 0
         self.__bot.send_message(message.from_user.id, 'Введите город.')
         self.__bot.register_next_step_handler(message, self.input_city)
-
-    def get_command_id(self):
-        user_id = self.__message.from_user.id
-        db_commands_val(user_id=user_id,
-                        command_name=self.__message.text,
-                        time=datetime.now())
-        conn = sqlite3.connect('tourobot.db', check_same_thread=False)
-        cursor = conn.cursor()
-        conn.commit()
-        command_ids = cursor.execute("SELECT id FROM commands WHERE "
-                                     "user_id = {}".format(user_id))
-        command_id = list(command_ids)[-1][0]
-        return command_id
 
     def input_city(self, message) -> None:
         """
@@ -167,6 +154,7 @@ class Query:
         :return:
         """
         try:
+
             if int(message.text) <= 10:
                 self.__photos_count = int(message.text)
             else:
@@ -184,6 +172,7 @@ class Query:
 
         :return:
         """
+        self.get_command_id()
         hotels = self.find_hotels()
         if not hotels:
             self.__bot.send_message(self.__message.from_user.id,
@@ -191,6 +180,20 @@ class Query:
             return
         for hotel in hotels:
             self.output_hotel(hotel)
+
+    def get_command_id(self):
+        user_id = self.__message.from_user.id
+        db_commands_val(user_id=user_id,
+                        command_name=self.__message.text,
+                        city=self.__city,
+                        time=datetime.now())
+        conn = sqlite3.connect('tourobot.db', check_same_thread=False)
+        cursor = conn.cursor()
+        conn.commit()
+        command_ids = cursor.execute("SELECT id FROM commands WHERE "
+                                     "user_id = {}".format(user_id))
+        command_id = list(command_ids)[-1][0]
+        self.__command_id = command_id
 
     def find_hotels(self) -> List[dict]:
         """

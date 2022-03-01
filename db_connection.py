@@ -20,13 +20,14 @@ def db_users_val(user_id: int,
 
 def db_commands_val(user_id: int,
                     command_name: str,
+                    city: str,
                     time: datetime.datetime) -> None:
     conn = sqlite3.connect('tourobot.db', check_same_thread=False)
     cursor = conn.cursor()
     try:
-        cursor.execute('INSERT INTO commands (user_id, command_name, '
-                       'datetime) VALUES (?, ?, ?)',
-                       (user_id, command_name, time))
+        cursor.execute('INSERT INTO commands (user_id, command_name, city,'
+                       'datetime) VALUES (?, ?, ?, ?)',
+                       (user_id, command_name, city, time))
     except sqlite3.Error:
         pass
     conn.commit()

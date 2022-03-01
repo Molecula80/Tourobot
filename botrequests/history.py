@@ -4,7 +4,7 @@ import sqlite3
 def history(user_id):
     conn = sqlite3.connect('tourobot.db', check_same_thread=False)
     cursor = conn.cursor()
-    commands = cursor.execute("SELECT id, command_name, datetime FROM "
+    commands = cursor.execute("SELECT id, command_name, city, datetime FROM "
                               "commands WHERE user_id = {}".format(user_id))
     for command in commands:
         get_hotels(command)
