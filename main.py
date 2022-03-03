@@ -18,7 +18,11 @@ def start(message) -> None:
     username = message.from_user.username
     bot.send_message(message.chat.id,
                      'Здравствуйте {}. Меня зовут Tourobot. '
-                     'Бот для поиска отелей.'.format(us_name))
+                     'Бот для поиска отелей.\n'
+                     '/lowprice - поиск самых дешевых отелей.\n'
+                     '/highprice - поиск самых дорогих отелей.\n'
+                     '/bestdeal - поиск отелей, наиболее подходящих по цене '
+                     'и расстоянию от центра города.'.format(us_name))
     db_table_val(user_id=us_id,
                  user_name=us_name,
                  user_surname=us_surname,

@@ -14,6 +14,20 @@ class BestDeal(Query):
         ]
         super().__init__(bot, message, sort_order)
 
+    def logger_debug(self):
+        """ Метод для вывода логов. """
+        self._logger.debug('Сортировка: {s_order} | Город: {city} | '
+                           'Параметры bestdeal: {bd_params} |'
+                           'Отели: {h_count} | Время: {check_in} - '
+                           '{check_out} | Фотографии: {p_count}'.
+                           format(s_order=self._sort_order,
+                                  city=self._city,
+                                  bd_params=self.__bd_params,
+                                  h_count=self._hotels_count,
+                                  check_in=self._check_in,
+                                  check_out=self._check_out,
+                                  p_count=self._photos_count))
+
     def input_city(self, message) -> None:
         """
         Метод для ввода города
@@ -30,6 +44,7 @@ class BestDeal(Query):
     def input_bd_params(self, message) -> None:
         try:
             self.__bd_params.append(float(message.text))
+            self.logger_debug()
         except ValueError:
             self._bot.send_message(message.from_user.id,
                                    'Значение должно быть в цифрах.')
