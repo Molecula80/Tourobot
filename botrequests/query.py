@@ -12,20 +12,22 @@ from db_connection import db_calendar_val
 
 class Query:
     """
-    Класс, описывающий запрос к hotels4.p.rapidapi.com
+    Базовый класс, описывающий запрос к hotels4.p.rapidapi.com
 
     __x_rapid_api_key: ключ rapid api
     _headers (dict): словарь, содержащий хост и ключ rapid api
-    _city (str): город
-    _hotels_count (int): количество отелей
-    _check_in (str): дата въезда
-    _check_out (str): дата выезда
-    _photos_count (int): количество фотографий
 
     Args:
         bot: передается бот
         message: передается сообщение
         sort_order (str): передается порядок сортировки
+
+    Atributes:
+        _city (str): город
+        _hotels_count (int): количество отелей
+        _check_in (str): дата въезда
+        _check_out (str): дата выезда
+        __photos_count (int): количество фотографий
     """
     __x_rapid_api_key = config('X-RapidAPI-Key')
     _headers: dict = {
@@ -42,6 +44,7 @@ class Query:
         self._check_in = ''
         self._check_out = ''
         self.__photos_count = 0
+        # Получаем id календарей
         self.__ci_cal_id = self.get_calendar_id(message.from_user.id)
         self.__co_cal_id = self.get_calendar_id(message.from_user.id)
         self._logger = logging.getLogger('tourobot')
@@ -50,7 +53,13 @@ class Query:
         self._bot.register_next_step_handler(message, self.input_city)
 
     @classmethod
-    def get_calendar_id(cls, user_id):
+    def get_calendar_id(cls, user_id: int) -> int:
+        """
+        Статический метод. Создает новую запись в таблице calendars в базе
+        данных, вносит туда id пользователя и возвращает id календаря.
+        :param user_id:
+        :return calendar_id:
+        """
         db_calendar_val(user_id)
         conn = sqlite3.connect('tourobot.db', check_same_thread=False)
         cursor = conn.cursor()
@@ -60,7 +69,7 @@ class Query:
         calendar_id = list(calendar_ids)[-1][0]
         return calendar_id
 
-    def logger_debug(self):
+    def logger_debug(self) -> None:
         """ Метод для вывода логов. """
         self._logger.debug('user id: {user_id} | '
                            'sort: {s_order} | '
@@ -123,6 +132,7 @@ class Query:
             elif result:
                 self._check_in = result
                 self.logger_debug()
+                # Создаем календарь для даты выезда.
                 check_out_cal = \
                     DetailedTelegramCalendar(calendar_id=
                                              self.__co_cal_id).build()[0]
@@ -163,6 +173,7 @@ class Query:
         try:
             self._hotels_count = int(message.text)
             self.logger_debug()
+            # Создаем календарь для даты въезда.
             check_in_cal = DetailedTelegramCalendar(
                 calendar_id=self.__ci_cal_id).build()[0]
             self._bot.send_message(message.chat.id,
