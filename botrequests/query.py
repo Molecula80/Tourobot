@@ -6,6 +6,8 @@ from typing import List
 from telebot.types import InputMediaPhoto
 from telegram_bot_calendar import DetailedTelegramCalendar
 import logging
+import sqlite3
+from db_connection import db_calendar_val
 
 
 class Query:
@@ -14,8 +16,6 @@ class Query:
 
     __x_rapid_api_key: ключ rapid api
     _headers (dict): словарь, содержащий хост и ключ rapid api
-    __ci_cal_id (int): id календаря для даты въезда
-    __co_cal_id (int): id календаря для даты выезда
     _city (str): город
     _hotels_count (int): количество отелей
     _check_in (str): дата въезда
@@ -35,31 +35,50 @@ class Query:
 
     def __init__(self, bot, message, sort_order: str) -> None:
         self._bot = bot
-        self._message = message
-        self._sort_order = sort_order
+        self.__message = message
+        self.__sort_order = sort_order
         self._city = ''
         self._hotels_count = 0
         self._check_in = ''
         self._check_out = ''
-        self._photos_count = 0
+        self.__photos_count = 0
+        self.__ci_cal_id = self.get_calendar_id(message.from_user.id)
+        self.__co_cal_id = self.get_calendar_id(message.from_user.id)
         self._logger = logging.getLogger('tourobot')
         self.logger_debug()
         self._bot.send_message(message.from_user.id, 'Введите город.')
         self._bot.register_next_step_handler(message, self.input_city)
 
+    @classmethod
+    def get_calendar_id(cls, user_id):
+        db_calendar_val(user_id)
+        conn = sqlite3.connect('tourobot.db', check_same_thread=False)
+        cursor = conn.cursor()
+        conn.commit()
+        calendar_ids = cursor.execute('SELECT id FROM calendars '
+                                      'WHERE user_id = {}'.format(user_id))
+        calendar_id = list(calendar_ids)[-1][0]
+        return calendar_id
+
     def logger_debug(self):
         """ Метод для вывода логов. """
-        self._logger.debug('ID полюзователя: {user_id} | '
-                           'Сортировка: {s_order} | Город: {city} | '
-                           'Отели: {h_count} | Время: {check_in} - '
-                           '{check_out} | Фотографии: {p_count}'.
-                           format(user_id=self._message.from_user.id,
-                                  s_order=self._sort_order,
+        self._logger.debug('user id: {user_id} | '
+                           'sort: {s_order} | '
+                           'ci cal id: {ci_cal_id} | '
+                           'co cal id: {co_cal_id} | '
+                           'city: {city} | '
+                           'hotels count: {h_count} | '
+                           'dates: {check_in} - {check_out} | '
+                           'photos: {p_count}'.
+                           format(user_id=self.__message.from_user.id,
+                                  s_order=self.__sort_order,
+                                  ci_cal_id=self.__ci_cal_id,
+                                  co_cal_id=self.__co_cal_id,
                                   city=self._city,
                                   h_count=self._hotels_count,
                                   check_in=self._check_in,
                                   check_out=self._check_out,
-                                  p_count=self._photos_count))
+                                  p_count=self.__photos_count))
 
     def input_city(self, message) -> None:
         """
@@ -85,7 +104,7 @@ class Query:
         """
 
         @self._bot.callback_query_handler(
-            func=DetailedTelegramCalendar.func(calendar_id=1))
+            func=DetailedTelegramCalendar.func(calendar_id=self.__ci_cal_id))
         def input_check_in(call) -> None:
             """
             Вложенная функция для выбора начальной даты.
@@ -94,7 +113,8 @@ class Query:
             :return:
             """
             result, key, step = \
-                DetailedTelegramCalendar(calendar_id=1).process(call.data)
+                DetailedTelegramCalendar(calendar_id=
+                                         self.__ci_cal_id).process(call.data)
             if not result and key:
                 self._bot.edit_message_text('Выберите начальную дату.',
                                             call.message.chat.id,
@@ -104,13 +124,14 @@ class Query:
                 self._check_in = result
                 self.logger_debug()
                 check_out_cal = \
-                    DetailedTelegramCalendar(calendar_id=2).build()[0]
+                    DetailedTelegramCalendar(calendar_id=
+                                             self.__co_cal_id).build()[0]
                 self._bot.send_message(message.chat.id,
                                        'Выберите конечную дату.',
                                        reply_markup=check_out_cal)
 
         @self._bot.callback_query_handler(
-            func=DetailedTelegramCalendar.func(calendar_id=2))
+            func=DetailedTelegramCalendar.func(calendar_id=self.__co_cal_id))
         def input_check_out(call) -> None:
             """
             Вложенная функция для выбора конечной даты.
@@ -119,7 +140,8 @@ class Query:
             :return:
             """
             result, key, step = \
-                DetailedTelegramCalendar(calendar_id=2).process(call.data)
+                DetailedTelegramCalendar(calendar_id=
+                                         self.__co_cal_id).process(call.data)
             if not result and key:
                 self._bot.edit_message_text('Выберите конечную дату.',
                                             call.message.chat.id,
@@ -142,7 +164,7 @@ class Query:
             self._hotels_count = int(message.text)
             self.logger_debug()
             check_in_cal = DetailedTelegramCalendar(
-                calendar_id=1).build()[0]
+                calendar_id=self.__ci_cal_id).build()[0]
             self._bot.send_message(message.chat.id,
                                    'Выберите начальную дату.',
                                    reply_markup=check_in_cal)
@@ -176,9 +198,9 @@ class Query:
         """
         try:
             if int(message.text) <= 10:
-                self._photos_count = int(message.text)
+                self.__photos_count = int(message.text)
             else:
-                self._photos_count = 10
+                self.__photos_count = 10
             self.output_hotels()
         except ValueError:
             self._bot.send_message(message.from_user.id,
@@ -194,7 +216,7 @@ class Query:
         """
         hotels = self.find_hotels()
         if not hotels:
-            self._bot.send_message(self._message.from_user.id,
+            self._bot.send_message(self.__message.from_user.id,
                                    'По вашему запросу ничего не найдено.')
             return
         for hotel in hotels:
@@ -216,12 +238,12 @@ class Query:
                              "checkIn": self._check_in,
                              "checkOut": self._check_out,
                              "adults1": "1",
-                             "sortOrder": self._sort_order,
+                             "sortOrder": self.__sort_order,
                              "locale": "ru_RU",
                              "currency": "USD"}
         self._logger.debug('ID пользователя: {user_id} | Hotels qs: '
                            '{hotels_qs}'.format(user_id=
-                                                self._message.from_user.id,
+                                                self.__message.from_user.id,
                                                 hotels_qs=querystring))
         results = self.json_deserialization(url=url,
                                             headers=self._headers,
@@ -243,7 +265,7 @@ class Query:
                              "currency": "USD"}
         self._logger.debug('ID пользователя: {user_id} | City qs: '
                            '{city_qs}'.format(user_id=
-                                              self._message.from_user.id,
+                                              self.__message.from_user.id,
                                               city_qs=querystring))
         results = self.json_deserialization(url=url,
                                             headers=self._headers,
@@ -294,11 +316,11 @@ class Query:
                                             address=address,
                                             center_dist=center_dist,
                                             price=price)
-        self._bot.send_message(self._message.from_user.id,
+        self._bot.send_message(self.__message.from_user.id,
                                hotel_info,
                                disable_web_page_preview=True)
         # Ищем фотографии
-        if self._photos_count > 0:
+        if self.__photos_count > 0:
             self.get_photos(hotel)
 
     @classmethod
@@ -332,7 +354,7 @@ class Query:
                                             headers=self._headers,
                                             querystring=querystring)
         try:
-            images: List[dict] = results["hotelImages"][:self._photos_count]
+            images: List[dict] = results["hotelImages"][:self.__photos_count]
             self.send_photos(images)
         except BaseException:
             return
@@ -352,4 +374,4 @@ class Query:
                 photos.append(InputMediaPhoto(photo))
             except BaseException:
                 pass
-        self._bot.send_media_group(self._message.from_user.id, photos)
+        self._bot.send_media_group(self.__message.from_user.id, photos)

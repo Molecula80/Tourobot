@@ -15,3 +15,15 @@ def db_table_val(user_id: int,
     except sqlite3.Error:
         pass
     conn.commit()
+
+
+def db_calendar_val(user_id: int) -> None:
+    """ Функция. Вносит данные календаря в базу данных. """
+    conn = sqlite3.connect('tourobot.db', check_same_thread=False)
+    cursor = conn.cursor()
+    try:
+        cursor.execute('INSERT INTO calendars (user_id) VALUES (?)',
+                       (user_id,))
+    except sqlite3.Error:
+        pass
+    conn.commit()
