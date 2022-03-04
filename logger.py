@@ -1,7 +1,8 @@
 import logging
 
 
-def init_logger():
+def init_logger() -> None:
+    """ Функция, создающая логгер. """
     logger = logging.getLogger('tourobot')
     FORMAT = '%(asctime)s :: %(name)s:%(lineno)s - %(levelname)s - ' \
              '%(message)s'
