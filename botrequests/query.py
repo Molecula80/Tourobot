@@ -17,6 +17,11 @@ class Query:
 
     __x_rapid_api_key: ключ rapid api
     _headers (dict): словарь, содержащий хост и ключ rapid api
+    _city (str): город
+    _hotels_count (int): количество отелей
+    _check_in (str): дата въезда
+    _check_out (str): дата выезда
+    _photos_count (int): количество фотографий
 
     Args:
         bot: передается бот
