@@ -25,6 +25,7 @@ class BestDeal(Query):
         _check_in (str): дата въезда
         _check_out (str): дата выезда
         __photos_count (int): количество фотографий
+        __command_id (int): id команды введенной пользователем
     """
     __bd_messages: List[str] = [
         'Введите максимальную цену за сутки.',
@@ -106,6 +107,10 @@ class BestDeal(Query):
                              "locale": "ru_RU",
                              "currency": "USD",
                              "landmarkIds": "Центр города"}
+        self._logger.debug('user id: {user_id} | hotels qs: '
+                           '{hotels_qs}'.format(user_id=
+                                                self._message.from_user.id,
+                                                hotels_qs=querystring))
         results = self.json_deserialization(url=url,
                                             headers=self._headers,
                                             querystring=querystring)

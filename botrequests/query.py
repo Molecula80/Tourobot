@@ -29,6 +29,7 @@ class Query:
         _check_in (str): дата въезда
         _check_out (str): дата выезда
         __photos_count (int): количество фотографий
+        __command_id (int): id команды введенной пользователем
     """
     __x_rapid_api_key = config('X-RapidAPI-Key')
     _headers: dict = {
@@ -38,7 +39,7 @@ class Query:
 
     def __init__(self, bot, message, sort_order: str) -> None:
         self._bot = bot
-        self.__message = message
+        self._message = message
         self.__sort_order = sort_order
         self._city = ''
         self._hotels_count = 0
@@ -48,6 +49,7 @@ class Query:
         # Получаем id календарей
         self.__ci_cal_id = self.get_calendar_id(message.from_user.id)
         self.__co_cal_id = self.get_calendar_id(message.from_user.id)
+        self.__command_id = 0
         self._logger = logging.getLogger('tourobot')
         self.logger_debug()
         self._bot.send_message(message.from_user.id, 'Введите город.')
@@ -80,7 +82,7 @@ class Query:
                            'hotels count: {h_count} | '
                            'dates: {check_in} - {check_out} | '
                            'photos: {p_count}'.
-                           format(user_id=self.__message.from_user.id,
+                           format(user_id=self._message.from_user.id,
                                   s_order=self.__sort_order,
                                   ci_cal_id=self.__ci_cal_id,
                                   co_cal_id=self.__co_cal_id,
@@ -229,17 +231,17 @@ class Query:
         self.get_command_id()
         hotels = self.find_hotels()
         if not hotels:
-            self._bot.send_message(self.__message.from_user.id,
+            self._bot.send_message(self._message.from_user.id,
                                    'По вашему запросу ничего не найдено.')
             return
         for hotel in hotels:
             self.output_hotel(hotel)
 
     def get_command_id(self):
-        user_id = self.__message.from_user.id
+        user_id = self._message.from_user.id
         db_commands_val(user_id=user_id,
-                        command_name=self.__message.text,
-                        city=self.__city,
+                        command_name=self._message.text,
+                        city=self._city,
                         time=datetime.now())
         conn = sqlite3.connect('tourobot.db', check_same_thread=False)
         cursor = conn.cursor()
@@ -270,7 +272,7 @@ class Query:
                              "currency": "USD"}
         self._logger.debug('user id: {user_id} | hotels qs: '
                            '{hotels_qs}'.format(user_id=
-                                                self.__message.from_user.id,
+                                                self._message.from_user.id,
                                                 hotels_qs=querystring))
         results = self.json_deserialization(url=url,
                                             headers=self._headers,
@@ -292,7 +294,7 @@ class Query:
                              "currency": "USD"}
         self._logger.debug('user id: {user_id} | city qs: '
                            '{city_qs}'.format(user_id=
-                                              self.__message.from_user.id,
+                                              self._message.from_user.id,
                                               city_qs=querystring))
         results = self.json_deserialization(url=url,
                                             headers=self._headers,
@@ -343,9 +345,9 @@ class Query:
                                             address=address,
                                             center_dist=center_dist,
                                             price=price)
-        self.__bot.send_message(self.__message.from_user.id,
-                                hotel_info,
-                                disable_web_page_preview=True)
+        self._bot.send_message(self._message.from_user.id,
+                               hotel_info,
+                               disable_web_page_preview=True)
         db_hotels_val(command_id=self.__command_id, hotel_name=name)
         # Ищем фотографии
         if self.__photos_count > 0:
@@ -402,4 +404,4 @@ class Query:
                 photos.append(InputMediaPhoto(photo))
             except BaseException:
                 pass
-        self._bot.send_media_group(self.__message.from_user.id, photos)
+        self._bot.send_media_group(self._message.from_user.id, photos)

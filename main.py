@@ -1,6 +1,6 @@
 from telebot import TeleBot
 from decouple import config
-from db_connection import db_users_val, db_commands_val
+from db_connection import db_users_val
 from botrequests.query import Query
 from botrequests.bestdeal import BestDeal
 from logger import init_logger
@@ -23,7 +23,8 @@ def start(message) -> None:
                      '/lowprice - поиск самых дешевых отелей.\n'
                      '/highprice - поиск самых дорогих отелей.\n'
                      '/bestdeal - поиск отелей, наиболее подходящих по цене '
-                     'и расстоянию от центра города.'.format(us_name))
+                     'и расстоянию от центра города.\n'
+                     '/history - история поиска.'.format(us_name))
     db_users_val(user_id=us_id,
                  user_name=us_name,
                  user_surname=us_surname,
@@ -39,6 +40,8 @@ def get_text_messages(message) -> None:
         Query(bot=bot, message=message, sort_order='PRICE_HIGHEST_FIRST')
     elif message.text == "/bestdeal":
         BestDeal(bot=bot, message=message)
+    elif message.text == "/history":
+        history(message.from_user.id)
     else:
         bot.send_message(message.from_user.id, "Я не понимаю.")
 
