@@ -17,6 +17,11 @@ class Query:
 
     __x_rapid_api_key: ключ rapid api
     _headers (dict): словарь, содержащий хост и ключ rapid api
+    _city (str): город
+    _hotels_count (int): количество отелей
+    _check_in (str): дата въезда
+    _check_out (str): дата выезда
+    _photos_count (int): количество фотографий
 
     Args:
         bot: передается бот
@@ -241,7 +246,7 @@ class Query:
         user_id = self._message.from_user.id
         db_commands_val(user_id=user_id,
                         command_name=self._message.text,
-                        city=self._city,
+                        city=self._city.title(),
                         time=datetime.now())
         conn = sqlite3.connect('tourobot.db', check_same_thread=False)
         cursor = conn.cursor()
