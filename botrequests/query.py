@@ -7,7 +7,8 @@ from telebot.types import InputMediaPhoto
 from telegram_bot_calendar import DetailedTelegramCalendar
 import logging
 import sqlite3
-from db_connection import db_calendar_val
+from datetime import datetime
+from db_connection import db_commands_val, db_hotels_val, db_calendar_val
 
 
 class Query:
@@ -225,6 +226,7 @@ class Query:
 
         :return:
         """
+        self.get_command_id()
         hotels = self.find_hotels()
         if not hotels:
             self._bot.send_message(self.__message.from_user.id,
@@ -232,6 +234,20 @@ class Query:
             return
         for hotel in hotels:
             self.output_hotel(hotel)
+
+    def get_command_id(self):
+        user_id = self.__message.from_user.id
+        db_commands_val(user_id=user_id,
+                        command_name=self.__message.text,
+                        city=self.__city,
+                        time=datetime.now())
+        conn = sqlite3.connect('tourobot.db', check_same_thread=False)
+        cursor = conn.cursor()
+        conn.commit()
+        command_ids = cursor.execute("SELECT id FROM commands WHERE "
+                                     "user_id = {}".format(user_id))
+        command_id = list(command_ids)[-1][0]
+        self.__command_id = command_id
 
     def find_hotels(self) -> List[dict]:
         """
@@ -327,9 +343,10 @@ class Query:
                                             address=address,
                                             center_dist=center_dist,
                                             price=price)
-        self._bot.send_message(self.__message.from_user.id,
-                               hotel_info,
-                               disable_web_page_preview=True)
+        self.__bot.send_message(self.__message.from_user.id,
+                                hotel_info,
+                                disable_web_page_preview=True)
+        db_hotels_val(command_id=self.__command_id, hotel_name=name)
         # Ищем фотографии
         if self.__photos_count > 0:
             self.get_photos(hotel)

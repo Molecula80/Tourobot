@@ -1,9 +1,10 @@
 from telebot import TeleBot
 from decouple import config
-from db_connection import db_table_val
+from db_connection import db_users_val, db_commands_val
 from botrequests.query import Query
 from botrequests.bestdeal import BestDeal
 from logger import init_logger
+from botrequests.history import history
 
 TOKEN = config('TOKEN')
 bot = TeleBot(TOKEN)
@@ -23,7 +24,7 @@ def start(message) -> None:
                      '/highprice - поиск самых дорогих отелей.\n'
                      '/bestdeal - поиск отелей, наиболее подходящих по цене '
                      'и расстоянию от центра города.'.format(us_name))
-    db_table_val(user_id=us_id,
+    db_users_val(user_id=us_id,
                  user_name=us_name,
                  user_surname=us_surname,
                  username=username)
