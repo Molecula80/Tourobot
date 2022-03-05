@@ -41,7 +41,7 @@ def get_text_messages(message) -> None:
     elif message.text == "/bestdeal":
         BestDeal(bot=bot, message=message)
     elif message.text == "/history":
-        history(message.from_user.id)
+        history(bot=bot, user_id=message.from_user.id)
     else:
         bot.send_message(message.from_user.id, "Я не понимаю.")
 

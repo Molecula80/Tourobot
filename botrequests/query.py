@@ -244,10 +244,13 @@ class Query:
 
     def get_command_id(self):
         user_id = self._message.from_user.id
+        now = datetime.now()
+        now = now.strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.strptime(now, '%Y-%m-%d %H:%M:%S')
         db_commands_val(user_id=user_id,
                         command_name=self._message.text,
                         city=self._city.title(),
-                        time=datetime.now())
+                        time=now)
         conn = sqlite3.connect('tourobot.db', check_same_thread=False)
         cursor = conn.cursor()
         conn.commit()
