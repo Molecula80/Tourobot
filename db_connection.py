@@ -22,6 +22,7 @@ def db_commands_val(user_id: int,
                     command_name: str,
                     city: str,
                     time: datetime.datetime) -> None:
+    """ Функция. Вносит данные запроса пользователя в базу данных. """
     conn = sqlite3.connect('tourobot.db', check_same_thread=False)
     cursor = conn.cursor()
     try:
@@ -34,6 +35,9 @@ def db_commands_val(user_id: int,
 
 
 def db_hotels_val(command_id: int, hotel_name: str) -> None:
+    """
+    Функция. Вносит данные отеля, найденного пользователем, в базу данных.
+    """
     conn = sqlite3.connect('tourobot.db', check_same_thread=False)
     cursor = conn.cursor()
     try:

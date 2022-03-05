@@ -1,7 +1,15 @@
 import sqlite3
 
 
-def history(bot, user_id):
+def history(bot, user_id: int) -> None:
+    """
+    Фкнкция. Ищет команды, введенные пользователем, в базе данных и шлет
+    пользователю историю поиска.
+
+    :param bot:
+    :param user_id:
+    :return:
+    """
     conn = sqlite3.connect('tourobot.db', check_same_thread=False)
     cursor = conn.cursor()
     conn.commit()
@@ -12,7 +20,14 @@ def history(bot, user_id):
         bot.send_message(user_id, answer)
 
 
-def get_hotels(command):
+def get_hotels(command: tuple) -> str:
+    """
+    Функция. Возврает сообщение, содержашее команду, введенную пользователем,
+    и найденные отели.
+
+    :param command:
+    :return answer:
+    """
     command_id = command[0]
     command_str = ' | '.join(command[1:])
     conn = sqlite3.connect('tourobot.db', check_same_thread=False)
