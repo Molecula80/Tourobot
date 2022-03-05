@@ -1,10 +1,11 @@
 from telebot import TeleBot
 from decouple import config
 from db_connection import db_users_val
+from logger import init_logger
 from botrequests.query import Query
 from botrequests.bestdeal import BestDeal
-from logger import init_logger
 from botrequests.history import history
+from botrequests.help_command import help_command
 
 TOKEN = config('TOKEN')
 bot = TeleBot(TOKEN)
@@ -19,12 +20,8 @@ def start(message) -> None:
     username = message.from_user.username
     bot.send_message(message.chat.id,
                      'Здравствуйте {}. Меня зовут Tourobot. '
-                     'Бот для поиска отелей.\n'
-                     '/lowprice - поиск самых дешевых отелей.\n'
-                     '/highprice - поиск самых дорогих отелей.\n'
-                     '/bestdeal - поиск отелей, наиболее подходящих по цене '
-                     'и расстоянию от центра города.\n'
-                     '/history - история поиска.'.format(us_name))
+                     'Бот для поиска отелей. Введите команду /help для '
+                     'получения помощи.'.format(us_name))
     db_users_val(user_id=us_id,
                  user_name=us_name,
                  user_surname=us_surname,
@@ -42,6 +39,8 @@ def get_text_messages(message) -> None:
         BestDeal(bot=bot, message=message)
     elif message.text == "/history":
         history(bot=bot, user_id=message.from_user.id)
+    elif message.text == "/help":
+        help_command(bot=bot, user_id=message.from_user.id)
     else:
         bot.send_message(message.from_user.id, "Я не понимаю.")
 
