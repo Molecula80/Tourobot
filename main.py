@@ -1,6 +1,6 @@
 from telebot import TeleBot
 from decouple import config
-from db_connection import db_users_val
+from db_connection import create_tables
 from logger import init_logger
 from botrequests.query import Query
 from botrequests.bestdeal import BestDeal
@@ -22,10 +22,10 @@ def start(message) -> None:
                      'Здравствуйте {}. Меня зовут Tourobot. '
                      'Бот для поиска отелей. Введите команду /help для '
                      'получения помощи.'.format(us_name))
-    db_users_val(user_id=us_id,
-                 user_name=us_name,
-                 user_surname=us_surname,
-                 username=username)
+    create_tables(user_id=us_id,
+                  user_name=us_name,
+                  user_surname=us_surname,
+                  username=username)
 
 
 @bot.message_handler(content_types=['text'])
