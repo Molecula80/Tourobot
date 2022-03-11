@@ -15,9 +15,13 @@ def history(bot, user_id: int) -> None:
     conn.commit()
     commands = cursor.execute("SELECT id, command_name, city, datetime FROM "
                               "commands WHERE user_id = {}".format(user_id))
+    empty = True
     for command in commands:
+        empty = False
         answer = get_hotels(command)
         bot.send_message(user_id, answer)
+    if empty:
+        bot.send_message(user_id, 'Вы еще не сделали ни одного запроса.')
 
 
 def get_hotels(command: tuple) -> str:

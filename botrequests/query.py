@@ -173,7 +173,7 @@ class Query:
                 buttons = ['Да', 'Нет']
                 keyboard.add(*buttons)
                 answer = self._bot.send_message(message.from_user.id,
-                                                text='Вывести фотографии.',
+                                                text='Вывести фотографии?',
                                                 reply_markup=keyboard)
                 self._bot.register_next_step_handler(answer,
                                                      self.need_photos)
