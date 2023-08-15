@@ -5,46 +5,97 @@ from telebot import types
 from typing import List
 from telebot.types import InputMediaPhoto
 from telegram_bot_calendar import DetailedTelegramCalendar
+import logging
+import sqlite3
+from datetime import datetime
+from db_connection import db_commands_val, db_hotels_val, db_calendar_val
 
 
 class Query:
     """
-    Класс, описывающий запрос к hotels4.p.rapidapi.com
+    Базовый класс, описывающий запрос к hotels4.p.rapidapi.com
 
     __x_rapid_api_key: ключ rapid api
     _headers (dict): словарь, содержащий хост и ключ rapid api
-    __ci_cal_id (int): id календаря для даты въезда
-    __co_cal_id (int): id календаря для даты выезда
     _city (str): город
     _hotels_count (int): количество отелей
     _check_in (str): дата въезда
     _check_out (str): дата выезда
-    __photos_count (int): количество фотографий
+    _photos_count (int): количество фотографий
 
     Args:
         bot: передается бот
         message: передается сообщение
         sort_order (str): передается порядок сортировки
+
+    Atributes:
+        _city (str): город
+        _hotels_count (int): количество отелей
+        _check_in (str): дата въезда
+        _check_out (str): дата выезда
+        __photos_count (int): количество фотографий
+        __command_id (int): id команды введенной пользователем
     """
     __x_rapid_api_key = config('X-RapidAPI-Key')
     _headers: dict = {
         'x-rapidapi-host': "hotels4.p.rapidapi.com",
         'x-rapidapi-key': __x_rapid_api_key
     }
-    __ci_cal_id = 1
-    __co_cal_id = 2
 
     def __init__(self, bot, message, sort_order: str) -> None:
         self._bot = bot
-        self.__message = message
-        self._sort_order = sort_order
+        self._message = message
+        self.__sort_order = sort_order
         self._city = ''
         self._hotels_count = 0
         self._check_in = ''
         self._check_out = ''
         self.__photos_count = 0
+        # Получаем id календарей
+        self.__ci_cal_id = self.get_calendar_id(message.from_user.id)
+        self.__co_cal_id = self.get_calendar_id(message.from_user.id)
+        self.__command_id = 0
+        self._logger = logging.getLogger('tourobot')
+        self.logger_debug()
         self._bot.send_message(message.from_user.id, 'Введите город.')
         self._bot.register_next_step_handler(message, self.input_city)
+
+    @classmethod
+    def get_calendar_id(cls, user_id: int) -> int:
+        """
+        Статический метод. Создает новую запись в таблице calendars в базе
+        данных, вносит туда id пользователя и возвращает id календаря.
+        :param user_id:
+        :return calendar_id:
+        """
+        db_calendar_val(user_id)
+        conn = sqlite3.connect('tourobot.db', check_same_thread=False)
+        cursor = conn.cursor()
+        conn.commit()
+        calendar_ids = cursor.execute('SELECT id FROM calendars '
+                                      'WHERE user_id = {}'.format(user_id))
+        calendar_id = list(calendar_ids)[-1][0]
+        return calendar_id
+
+    def logger_debug(self) -> None:
+        """ Метод для вывода логов. """
+        self._logger.debug('user id: {user_id} | '
+                           'sort: {s_order} | '
+                           'ci cal id: {ci_cal_id} | '
+                           'co cal id: {co_cal_id} | '
+                           'city: {city} | '
+                           'hotels count: {h_count} | '
+                           'dates: {check_in} - {check_out} | '
+                           'photos: {p_count}'.
+                           format(user_id=self._message.from_user.id,
+                                  s_order=self.__sort_order,
+                                  ci_cal_id=self.__ci_cal_id,
+                                  co_cal_id=self.__co_cal_id,
+                                  city=self._city,
+                                  h_count=self._hotels_count,
+                                  check_in=self._check_in,
+                                  check_out=self._check_out,
+                                  p_count=self.__photos_count))
 
     def input_city(self, message) -> None:
         """
@@ -54,6 +105,7 @@ class Query:
         :return:
         """
         self._city = message.text
+        self.logger_debug()
         self._bot.send_message(message.from_user.id,
                                'Сколько отелей нужно отобразить в '
                                'сообщении? (не больше 25)')
@@ -78,8 +130,8 @@ class Query:
             :return:
             """
             result, key, step = \
-                DetailedTelegramCalendar(
-                    calendar_id=self.__ci_cal_id).process(call.data)
+                DetailedTelegramCalendar(calendar_id=
+                                         self.__ci_cal_id).process(call.data)
             if not result and key:
                 self._bot.edit_message_text('Выберите начальную дату.',
                                             call.message.chat.id,
@@ -87,6 +139,8 @@ class Query:
                                             reply_markup=key)
             elif result:
                 self._check_in = result
+                self.logger_debug()
+                # Создаем календарь для даты выезда.
                 check_out_cal = \
                     DetailedTelegramCalendar(calendar_id=
                                              self.__co_cal_id).build()[0]
@@ -113,20 +167,21 @@ class Query:
                                             reply_markup=key)
             elif result:
                 self._check_out = result
-                Query.__ci_cal_id += 2
-                Query.__co_cal_id += 2
+                self.logger_debug()
                 keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True,
                                                      resize_keyboard=True)
                 buttons = ['Да', 'Нет']
                 keyboard.add(*buttons)
                 answer = self._bot.send_message(message.from_user.id,
-                                                text='Вывести фотографии.',
+                                                text='Вывести фотографии?',
                                                 reply_markup=keyboard)
                 self._bot.register_next_step_handler(answer,
                                                      self.need_photos)
 
         try:
             self._hotels_count = int(message.text)
+            self.logger_debug()
+            # Создаем календарь для даты въезда.
             check_in_cal = DetailedTelegramCalendar(
                 calendar_id=self.__ci_cal_id).build()[0]
             self._bot.send_message(message.chat.id,
@@ -178,13 +233,31 @@ class Query:
 
         :return:
         """
+        self.get_command_id()
         hotels = self.find_hotels()
         if not hotels:
-            self._bot.send_message(self.__message.from_user.id,
+            self._bot.send_message(self._message.from_user.id,
                                    'По вашему запросу ничего не найдено.')
             return
         for hotel in hotels:
             self.output_hotel(hotel)
+
+    def get_command_id(self):
+        user_id = self._message.from_user.id
+        now = datetime.now()
+        now = now.strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.strptime(now, '%Y-%m-%d %H:%M:%S')
+        db_commands_val(user_id=user_id,
+                        command_name=self._message.text,
+                        city=self._city.title(),
+                        time=now)
+        conn = sqlite3.connect('tourobot.db', check_same_thread=False)
+        cursor = conn.cursor()
+        conn.commit()
+        command_ids = cursor.execute("SELECT id FROM commands WHERE "
+                                     "user_id = {}".format(user_id))
+        command_id = list(command_ids)[-1][0]
+        self.__command_id = command_id
 
     def find_hotels(self) -> List[dict]:
         """
@@ -202,9 +275,13 @@ class Query:
                              "checkIn": self._check_in,
                              "checkOut": self._check_out,
                              "adults1": "1",
-                             "sortOrder": self._sort_order,
+                             "sortOrder": self.__sort_order,
                              "locale": "ru_RU",
                              "currency": "USD"}
+        self._logger.debug('user id: {user_id} | hotels qs: '
+                           '{hotels_qs}'.format(user_id=
+                                                self._message.from_user.id,
+                                                hotels_qs=querystring))
         results = self.json_deserialization(url=url,
                                             headers=self._headers,
                                             querystring=querystring)
@@ -223,6 +300,10 @@ class Query:
         querystring: dict = {"query": self._city,
                              "locale": "ru_RU",
                              "currency": "USD"}
+        self._logger.debug('user id: {user_id} | city qs: '
+                           '{city_qs}'.format(user_id=
+                                              self._message.from_user.id,
+                                              city_qs=querystring))
         results = self.json_deserialization(url=url,
                                             headers=self._headers,
                                             querystring=querystring)
@@ -272,9 +353,10 @@ class Query:
                                             address=address,
                                             center_dist=center_dist,
                                             price=price)
-        self._bot.send_message(self.__message.from_user.id,
+        self._bot.send_message(self._message.from_user.id,
                                hotel_info,
                                disable_web_page_preview=True)
+        db_hotels_val(command_id=self.__command_id, hotel_name=name)
         # Ищем фотографии
         if self.__photos_count > 0:
             self.get_photos(hotel)
@@ -330,4 +412,4 @@ class Query:
                 photos.append(InputMediaPhoto(photo))
             except BaseException:
                 pass
-        self._bot.send_media_group(self.__message.from_user.id, photos)
+        self._bot.send_media_group(self._message.from_user.id, photos)
