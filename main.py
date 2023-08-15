@@ -1,13 +1,12 @@
 from telebot import TeleBot
 from decouple import config
+
 from db_connection import create_tables
 from logger import init_logger
 from botrequests.query import Query
-<<<<<<<<< Temporary merge branch 1
 from botrequests.bestdeal import BestDeal
-=========
 from botrequests.history import history
->>>>>>>>> Temporary merge branch 2
+from botrequests.help_command import help_command
 
 TOKEN = config('TOKEN')
 bot = TeleBot(TOKEN)
