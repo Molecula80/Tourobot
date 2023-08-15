@@ -31,8 +31,6 @@ def get_text_messages(message) -> None:
         Query(bot=bot, message=message, sort_order='PRICE')
     elif message.text == "/highprice":
         Query(bot=bot, message=message, sort_order='PRICE_HIGHEST_FIRST')
-    elif message.text == "/history":
-        history(user_id=message.from_user.id)
     else:
         bot.send_message(message.from_user.id, "Я не понимаю.")
 
